@@ -1,0 +1,86 @@
+name: CI
+
+# The crate is a pure logic library with no I/O and no clock, so besides the usual
+# fmt/clippy/test gates this workflow checks the MSRV declaration and audits the
+# dependency tree. The MSRV gate exists because `rust-version` is a promise to consumers:
+# an unverified promise is discovered by the people least able to work around it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to the same branch cancels the older run instead of queueing it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  check:
+    name: fmt + clippy + test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the toolchain (channel from rust-toolchain.toml)
+        run: rustup show
+
+      - name: Cache the build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      # --locked makes CI build exactly the versions committed to the repository. A
+      # dependency upgraded locally without its lock file committed fails here instead of
+      # reaching a consumer.
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy (warnings as errors)
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: cargo test (unit and doc tests)
+        run: cargo test --locked --all-targets
+
+      # A bare `cargo doc` prints a broken intra-doc link as a warning and still finishes,
+      # which reads as success. -D warnings is what turns it into a failure.
+      - name: cargo doc
+        run: cargo doc --no-deps --locked
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  msrv:
+    name: MSRV 1.89
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the 1.89 toolchain
+        run: rustup toolchain install 1.89 --profile minimal
+
+      # --locked is deliberately left off: if a dependency raised its own MSRV, this gate
+      # should fail rather than silently resolve an older version, because the failure is
+      # the signal that `rust-version` has to rise or that dependency has to be pinned.
+      - name: Compile with 1.89
+        run: cargo +1.89 check --all-targets
+
+  deny:
+    name: cargo-deny (advisories + licenses)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+          arguments: --all-features

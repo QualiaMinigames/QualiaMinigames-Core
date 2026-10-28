@@ -33,13 +33,29 @@
 //!
 //! # Status
 //!
-//! Scaffolding only: the package layout, the lint configuration and the licensing are
-//! in place; no game is implemented yet.
+//! Two games are implemented: [`pipes`], where a grid of pipe pieces is turned until it is
+//! one network without a loop, and [`sudoku`], where a grid is filled so that every row,
+//! column and box holds each digit once. Both generate their puzzles from a seed the caller
+//! supplies, and both can save a game to bytes and read it back through [`snapshot`].
 //!
 //! # Usage
 //!
 //! ```
-//! assert_eq!(qualia_minigames_core::VERSION, env!("CARGO_PKG_VERSION"));
+//! use qualia_minigames_core::pipes::{Game as Pipes, Layout};
+//!
+//! let mut game = Pipes::new(9, Layout::Flat, 7);
+//! game.turn_clockwise(0);
+//! assert!(game.undo());
+//! assert_eq!(game.history_len(), 0);
+//! ```
+//!
+//! ```
+//! use qualia_minigames_core::sudoku::{Difficulty, Game as Sudoku};
+//!
+//! let mut game = Sudoku::generate(Difficulty::Easy, 7);
+//! let empty = (0..81).find(|cell| !game.is_given(*cell)).expect("a puzzle has empty cells");
+//! game.enter(empty, 5);
+//! assert_eq!(game.digit(empty), 5);
 //! ```
 //!
 //! # License
@@ -50,6 +66,11 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(clippy::missing_docs_in_private_items)]
+
+pub mod pipes;
+pub mod random;
+pub mod snapshot;
+pub mod sudoku;
 
 /// Version of this library, taken from `package.version` in `Cargo.toml`.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
