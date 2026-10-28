@@ -24,13 +24,13 @@ jobs:
     name: fmt + clippy + test
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install the toolchain (channel from rust-toolchain.toml)
         run: rustup show
 
       - name: Cache the build artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index
@@ -63,7 +63,7 @@ jobs:
     name: MSRV 1.89
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install the 1.89 toolchain
         run: rustup toolchain install 1.89 --profile minimal
@@ -78,7 +78,7 @@ jobs:
     name: cargo-deny (advisories + licenses)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
