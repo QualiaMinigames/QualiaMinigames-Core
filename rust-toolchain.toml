@@ -1,0 +1,6 @@
+# Development toolchain, pinned to stable so that it does not drift per machine.
+# Note: this channel is the **development** toolchain, not the MSRV.
+# The MSRV is `rust-version` in Cargo.toml (= 1.89); the two are different things.
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]

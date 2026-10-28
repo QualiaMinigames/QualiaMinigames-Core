@@ -1,0 +1,88 @@
+# cargo-deny configuration.
+#
+# Dependency auditing is a security control, not a chore: the RustSec database gains
+# advisories far faster than this project can review its tree by hand, and a dependency
+# vulnerability reaches the artifact without appearing in any diff of this repository.
+#
+# Reference: https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+# Dependencies are evaluated per target platform, so that a platform-specific dependency
+# is not counted against a build that never uses it.
+targets = [
+    { triple = "x86_64-pc-windows-msvc" },
+    { triple = "aarch64-linux-android" },
+    { triple = "aarch64-apple-ios" },
+]
+# Development dependencies are audited too: they do not enter the artifact, but can
+# carry a vulnerability into the CI environment.
+all-features = true
+
+[advisories]
+# Any unhandled vulnerability fails the check.
+# Note: `vulnerability` is a hard failure and never accepts a deferral.
+version = 2
+ignore = [
+    # List any advisory that must be accepted temporarily, with a reason and an expiry
+    # date, for example:
+    # { id = "RUSTSEC-0000-0000", reason = "no exploitable path, waiting for upstream 0.3.x (review: 2026-12-31)" },
+]
+
+[licenses]
+version = 2
+# This project is released under LGPL-3.0-or-later.
+# The allowlist covers common permissive licenses plus the copyleft licenses compatible
+# with LGPL.
+# Note: it does **not** include GPL-2.0-only / SSPL / BUSL or other licenses that are
+# incompatible with LGPL-3.0 or non-free.
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "ISC",
+    "LGPL-3.0-or-later",
+    "MIT",
+    "MIT-0",
+    "MPL-2.0",        # file-level copyleft, compatible with LGPL
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+# A license outside the list fails explicitly rather than being quietly accepted.
+confidence-threshold = 0.9
+
+# The allowlist is intentionally wider than the current dependency tree, so that adding
+# a well-known permissive crate does not require a policy edit first. Unmatched entries
+# are therefore not an error.
+unused-allowed-license = "allow"
+
+# If a dependency's license cannot be detected automatically (for example it ships a
+# LICENSE file but no SPDX declaration), clarify its actual license here entry by entry
+# rather than adding the whole suspect license to the allow list:
+#
+# [[licenses.clarify]]
+# name = "some-crate"
+# expression = "MIT"
+# license-files = [{ path = "LICENSE", hash = 0x0000_0000 }]
+
+[bans]
+multiple-versions = "warn"
+# Warn when one dependency appears in several versions: two versions of the same crate
+# can mean one of them is unpatched.
+wildcards = "deny"
+# Crates that are explicitly banned, with the reason.
+deny = []
+
+# `anyhow` is not banned: it is a library API-style question (public signatures use
+# thiserror) and is handled in code review, while listing it here would also hit
+# development dependencies and build scripts.
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+# allow-git is left empty: the project currently depends on no git source.
+allow-git = []

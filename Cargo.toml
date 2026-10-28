@@ -1,0 +1,27 @@
+[package]
+name = "qualia-minigames-core"
+version = "0.1.0"
+edition = "2024"
+# MSRV policy: 1.89 is the minimum supported version, not the development toolchain.
+# The development toolchain is pinned to stable by rust-toolchain.toml; the two are
+# different things. Raise the floor only when a dependency requires it, and name that
+# dependency in its own comment.
+rust-version = "1.89"
+description = "The core Rust lib of QualiaMinigames: game rules and state transitions shared by every front end"
+license = "LGPL-3.0-or-later"
+repository = "https://github.com/QualiaMinigames/QualiaMinigames-Core"
+readme = "README.en.md"
+keywords = ["game", "minigames", "game-logic", "engine"]
+categories = ["games"]
+# Files that are meaningful to the project but not to a consumer of the package.
+# A crates.io version number is permanent, so publishing stays an explicit action;
+# `/.github` and `/fuzz` join this list if and when those directories appear.
+exclude = [
+    "/deny.toml",
+    # Pins the toolchain of this checkout only; a consumer builds with its own.
+    "/rust-toolchain.toml",
+]
+
+[dependencies]
+
+[dev-dependencies]
