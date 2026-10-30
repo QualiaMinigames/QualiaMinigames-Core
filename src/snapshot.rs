@@ -27,7 +27,12 @@
 use core::fmt;
 
 /// The version this build writes.
-pub const FORMAT_VERSION: u8 = 1;
+///
+/// Version 2 follows the pipes generator that stops at three arms per cell: a snapshot holds
+/// the seed and the moves, so a save written under version 1 would regenerate a different
+/// board and apply the player's turns to it. Rejecting it is the honest answer — a board that
+/// looks intact but is not the one that was saved is worse than a save that will not open.
+pub const FORMAT_VERSION: u8 = 2;
 
 /// What can go wrong while reading a snapshot.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

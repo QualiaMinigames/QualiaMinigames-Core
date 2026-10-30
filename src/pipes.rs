@@ -18,10 +18,12 @@
 //! # The rules
 //!
 //! A board is a square grid of pieces. A piece joins a subset of the four sides of its
-//! cell to the cell's centre, so there are sixteen shapes, of which the rotations of one
-//! piece give at most four. A player turns pieces, and the board is solved when every
-//! piece belongs to one connected network with no loop inside it, which is the shape of a
-//! spanning tree.
+//! cell to the cell's centre, so there are sixteen possible shapes, of which the rotations
+//! of one piece give at most four. One of the sixteen is not used: a cross, the piece that
+//! joins every side, would be a cell a player cannot tell a turn on, so the generation never
+//! gives a cell more than three arms. A player turns pieces, and the board is solved when
+//! every piece belongs to one connected network with no loop inside it, which is the shape
+//! of a spanning tree.
 //!
 //! A loop is reported on its own ([`Game::loops`]) rather than only making the board
 //! unsolved: a player who closes a loop sees a network that looks finished, and needs to
@@ -39,8 +41,11 @@
 //! A puzzle is grown as a spanning tree over the cells by a randomised Kruskal, and every
 //! cell then receives the piece that joins exactly the sides the tree uses there. The
 //! result is solved by construction, and the tree's edges are a spanning tree, so no loop
-//! is present either. The pieces are finally turned by a seeded amount, except the four-way
-//! piece, whose rotation is invisible.
+//! is present either. The pieces are finally turned by a seeded amount.
+//!
+//! A cell never joins all four sides. The tree is grown with every cell held to three arms,
+//! so the pieces are ends, straights, bends and tees; a cross is not a piece the board
+//! draws, and a tree that cannot be completed under that limit is grown again.
 
 use crate::random::{Random, seed_from_text};
 use crate::snapshot::{FORMAT_VERSION, Reader, SnapshotError, Writer};
@@ -72,8 +77,17 @@ const SIDES: [u8; 4] = [side::TOP, side::RIGHT, side::BOTTOM, side::LEFT];
 /// The side opposite each entry of [`SIDES`], at the same index.
 const OPPOSITE: [u8; 4] = [side::BOTTOM, side::LEFT, side::TOP, side::RIGHT];
 
-/// The piece that joins all four sides.
-const FOUR_WAY: u8 = side::TOP | side::RIGHT | side::BOTTOM | side::LEFT;
+/// The most arms a cell's piece may have.
+///
+/// Three rules out the cross, the one shape whose four arms make a cell join every side: the
+/// board draws ends, straights, bends and tees.
+const MAX_ARMS: u8 = 3;
+
+/// How many times the tree is grown before the snake is used instead.
+///
+/// A capped grow can stall before every cell is reached, and a second shuffle usually finds a
+/// tree. The bound keeps a defect in the cap from spinning forever.
+const GROW_ATTEMPTS: usize = 64;
 
 /// The salt applied to the seed before the pieces are scrambled.
 ///
@@ -240,7 +254,7 @@ impl Game {
     #[must_use]
     pub fn new(size: u32, layout: Layout, seed: u64) -> Self {
         let board = Board::generate(size, layout, seed);
-        let turns = scramble(&board, seed);
+        let turns = scramble(board.cells(), seed);
         Self {
             board,
             turns,
@@ -570,18 +584,9 @@ pub fn start_cell(size: u32) -> u32 {
 }
 
 /// Returns the turns the pieces start with.
-fn scramble(board: &Board, seed: u64) -> Vec<u8> {
+fn scramble(cells: u32, seed: u64) -> Vec<u8> {
     let mut random = Random::new(seed ^ SCRAMBLE_SALT);
-    (0..board.cells())
-        .map(|index| {
-            if board.solved[index as usize] == FOUR_WAY {
-                // A four-way piece looks the same in every orientation, so a turn on it
-                // would be a move that changes nothing.
-                return 0;
-            }
-            random.below(4) as u8
-        })
-        .collect()
+    (0..cells).map(|_| random.below(4) as u8).collect()
 }
 
 /// A disjoint-set forest over the cells.
@@ -656,7 +661,41 @@ struct Edge {
 ///
 /// The edges come back in the order they were accepted, which is the order Kruskal chose
 /// them in. A wrapped board's candidate set includes the edges that cross its boundary.
+///
+/// A cell accepts at most [`MAX_ARMS`] edges, so the pieces drawn from the result are ends,
+/// straights, bends and tees. That cap can leave some cells unreached before the candidates
+/// run out, so the shuffle is tried again; a board that resists every attempt falls back to
+/// a snake, whose path through the cells has at most two arms each and always spans.
 fn grow_tree(size: u32, layout: Layout, random: &mut Random) -> Vec<Edge> {
+    let cells = size * size;
+    let mut candidates = candidates(size, layout);
+    let mut arms = vec![0_u8; cells as usize];
+    for _ in 0..GROW_ATTEMPTS {
+        random.shuffle(&mut candidates);
+        arms.fill(0);
+        let mut sets = Union::new(cells);
+        let mut edges = Vec::with_capacity(cells as usize - 1);
+        for candidate in &candidates {
+            if arms[candidate.first as usize] == MAX_ARMS
+                || arms[candidate.second as usize] == MAX_ARMS
+            {
+                continue;
+            }
+            if sets.join(candidate.first, candidate.second) {
+                arms[candidate.first as usize] += 1;
+                arms[candidate.second as usize] += 1;
+                edges.push(*candidate);
+            }
+        }
+        if edges.len() == cells as usize - 1 {
+            return edges;
+        }
+    }
+    snake(size)
+}
+
+/// Returns every edge a board of this size and layout may use, before any is chosen.
+fn candidates(size: u32, layout: Layout) -> Vec<Edge> {
     let cells = size * size;
     let wrap = layout == Layout::Wrapped;
     let mut candidates = Vec::new();
@@ -690,20 +729,49 @@ fn grow_tree(size: u32, layout: Layout, random: &mut Random) -> Vec<Edge> {
             });
         }
     }
-    random.shuffle(&mut candidates);
+    candidates
+}
 
-    // Kruskal: every candidate that joins two separate sets is part of the tree, and a
-    // spanning tree over a connected graph takes exactly `cells - 1` of them. Keeping the
-    // accepted edges themselves, rather than a parent link per cell, is what makes the tree
-    // independent of the order the sets were merged in.
-    let mut sets = Union::new(cells);
-    let mut edges = Vec::with_capacity(cells as usize - 1);
-    for candidate in candidates {
-        if sets.join(candidate.first, candidate.second) {
-            edges.push(candidate);
+/// Returns a spanning tree shaped like a snake: every row in turn, reversed on alternate
+/// rows, joined end to end.
+///
+/// The path is what [`grow_tree`] falls back to. It is a spanning tree of every layout,
+/// including a wrapped one, because it uses only the edges between neighbouring cells.
+fn snake(size: u32) -> Vec<Edge> {
+    let mut order = Vec::with_capacity((size * size) as usize);
+    for row in 0..size {
+        for step in 0..size {
+            let column = if row % 2 == 0 { step } else { size - 1 - step };
+            order.push(row * size + column);
         }
     }
-    edges
+    order
+        .windows(2)
+        .map(|pair| between(size, pair[0], pair[1]))
+        .collect()
+}
+
+/// Returns the edge between two cells that share a side.
+///
+/// # Panics
+///
+/// Panics when the two cells are neither equal nor neighbours, which a snake never produces.
+fn between(size: u32, first: u32, second: u32) -> Edge {
+    let (first_side, second_side) = if second == first + 1 {
+        (side::RIGHT, side::LEFT)
+    } else if second == first + size {
+        (side::BOTTOM, side::TOP)
+    } else if first == second + 1 {
+        (side::LEFT, side::RIGHT)
+    } else {
+        (side::TOP, side::BOTTOM)
+    };
+    Edge {
+        first,
+        first_side,
+        second,
+        second_side,
+    }
 }
 
 /// Returns the solved piece of every cell, given the tree's edges.
@@ -857,11 +925,21 @@ mod tests {
     }
 
     #[test]
-    fn a_four_way_piece_is_never_turned() {
-        let game = Game::new(MAX_SIZE, Layout::Flat, 7);
-        for index in 0..game.board().cells() {
-            if game.board().solved_piece(index) == FOUR_WAY {
-                assert_eq!(game.turns[index as usize], 0, "cell {index}");
+    fn a_generated_piece_never_joins_all_four_sides() {
+        // A cross is the one shape a turn cannot change, so the generation has to leave it
+        // out: a cell with four arms would be a piece the player turns for nothing.
+        for size in SIZES {
+            for layout in [Layout::Flat, Layout::Wrapped] {
+                for seed in SEEDS {
+                    let game = Game::new(size, layout, seed);
+                    for index in 0..game.board().cells() {
+                        let arms = game.board().solved_piece(index).count_ones();
+                        assert!(
+                            arms <= u32::from(MAX_ARMS),
+                            "size {size} {layout} seed {seed} cell {index} joins {arms} sides"
+                        );
+                    }
+                }
             }
         }
     }
@@ -904,9 +982,13 @@ mod tests {
     }
 
     #[test]
-    fn a_four_way_board_reports_every_cell_on_a_loop() {
+    fn a_board_of_crosses_reports_every_cell_on_a_loop() {
+        // The whole board joined in every direction is one loop through all of it. The rules
+        // still recognise the shape even though the generation no longer builds it, because a
+        // save written by an older build holds the pieces that build generated.
         let mut game = Game::new(MIN_SIZE, Layout::Flat, 0);
-        game.board.solved = vec![FOUR_WAY; game.board.cells() as usize];
+        let cross = side::TOP | side::RIGHT | side::BOTTOM | side::LEFT;
+        game.board.solved = vec![cross; game.board.cells() as usize];
         game.turns = vec![0; game.board.cells() as usize];
         let cells = game.board.cells();
         assert_eq!(game.loops().len(), cells as usize);

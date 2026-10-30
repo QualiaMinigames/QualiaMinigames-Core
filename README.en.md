@@ -26,15 +26,15 @@ depend on it as a separate project.
 | Item | Value |
 |---|---|
 | Crate name | `qualia-minigames-core` |
-| Version | `0.1.0` |
+| Version | `0.1.1` |
 | Type | pure logic library |
 | Edition | 2024 |
 | MSRV | **1.89** |
 | Development toolchain | `stable` (pinned by `rust-toolchain.toml`) |
 | License | `LGPL-3.0-or-later` |
 
-Scaffolding only: the package layout, the lint configuration and the licensing are in
-place; no game is implemented yet.
+Both games are complete: pipes and sudoku, with board generation, turns, loop detection,
+undo and the save format.
 
 ## Usage
 
