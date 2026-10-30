@@ -26,21 +26,21 @@ depend on it as a separate project.
 | Item | Value |
 |---|---|
 | Crate name | `qualia-minigames-core` |
-| Version | `0.1.1` |
+| Version | `0.2.0` |
 | Type | pure logic library |
 | Edition | 2024 |
 | MSRV | **1.89** |
 | Development toolchain | `stable` (pinned by `rust-toolchain.toml`) |
 | License | `LGPL-3.0-or-later` |
 
-Both games are complete: pipes and sudoku, with board generation, turns, loop detection,
-undo and the save format.
+All three games are complete: pipes, sudoku and minesweeper, with board generation, turns,
+loop detection, first-click protection, the no-guess check, undo and the save format.
 
 ## Usage
 
 ```toml
 [dependencies]
-qualia-minigames-core = "0.1"
+qualia-minigames-core = "0.2"
 ```
 
 ```rust

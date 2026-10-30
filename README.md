@@ -25,20 +25,21 @@ QualiaMinigames 的核心库。
 | 项 | 值 |
 |---|---|
 | crate 名 | `qualia-minigames-core` |
-| 版本 | `0.1.1` |
+| 版本 | `0.2.0` |
 | 类型 | 纯逻辑库 |
 | Edition | 2024 |
 | MSRV | **1.89** |
 | 开发工具链 | `stable`（由 `rust-toolchain.toml` 钉住） |
 | 许可证 | `LGPL-3.0-or-later` |
 
-包含接水管与数独两套完整规则：棋盘生成、回合推进、环路检测、解体与存档格式。
+包含接水管、数独与扫雷三套完整规则：棋盘生成、回合推进、环路检测、首点保护、无猜判定、
+悔棋与存档格式。
 
 ## 用法
 
 ```toml
 [dependencies]
-qualia-minigames-core = "0.1"
+qualia-minigames-core = "0.2"
 ```
 
 ```rust
