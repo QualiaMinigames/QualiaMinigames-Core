@@ -33,10 +33,11 @@
 //!
 //! # Status
 //!
-//! Two games are implemented: [`pipes`], where a grid of pipe pieces is turned until it is
-//! one network without a loop, and [`sudoku`], where a grid is filled so that every row,
-//! column and box holds each digit once. Both generate their puzzles from a seed the caller
-//! supplies, and both can save a game to bytes and read it back through [`snapshot`].
+//! Three games are implemented: [`pipes`], where a grid of pipe pieces is turned until it is
+//! one network without a loop, [`sudoku`], where a grid is filled so that every row, column
+//! and box holds each digit once, and [`minesweeper`], where a rectangular board is cleared
+//! of mines without opening one. Every game generates its puzzle from a seed the caller
+//! supplies, and every game can save a game to bytes and read it back through [`snapshot`].
 //!
 //! # Usage
 //!
@@ -58,6 +59,14 @@
 //! assert_eq!(game.digit(empty), 5);
 //! ```
 //!
+//! ```
+//! use qualia_minigames_core::minesweeper::{Game as Minesweeper, Mode};
+//!
+//! let mut game = Minesweeper::random(9, 9, 10, Mode::Normal, 7).expect("the board is valid");
+//! assert!(game.reveal(40) != qualia_minigames_core::minesweeper::Event::HitMine);
+//! assert_eq!(game.phase(), qualia_minigames_core::minesweeper::Phase::Playing);
+//! ```
+//!
 //! # License
 //!
 //! Licensed under the GNU Lesser General Public License v3.0 or later
@@ -67,6 +76,7 @@
 #![warn(missing_docs)]
 #![warn(clippy::missing_docs_in_private_items)]
 
+pub mod minesweeper;
 pub mod pipes;
 pub mod random;
 pub mod snapshot;

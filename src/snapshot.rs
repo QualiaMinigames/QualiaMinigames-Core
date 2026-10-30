@@ -117,6 +117,17 @@ impl Writer {
         self.bytes.extend_from_slice(&value.to_le_bytes());
     }
 
+    /// Appends a length-prefixed block of bytes.
+    ///
+    /// The length is written as a 32-bit value in front of the block, so a reader knows how
+    /// many bytes belong to it before it starts: a bitmap whose length is not stated would
+    /// have to be derived from the board, and a snapshot that disagreed with its own board
+    /// would then read as a shorter file rather than as a wrong one.
+    pub(crate) fn block(&mut self, bytes: &[u8]) {
+        self.u32(u32::try_from(bytes.len()).expect("a block fits a u32"));
+        self.bytes.extend_from_slice(bytes);
+    }
+
     /// Returns the bytes written.
     pub(crate) fn finish(self) -> Vec<u8> {
         self.bytes
@@ -169,6 +180,14 @@ impl<'a> Reader<'a> {
             return Err(SnapshotError::Truncated);
         }
         Ok(count)
+    }
+
+    /// Reads one length-prefixed block, checking the length against the remaining bytes.
+    pub(crate) fn block(&mut self) -> Result<&'a [u8], SnapshotError> {
+        let length = self.count(1)?;
+        let (head, rest) = self.rest.split_at(length);
+        self.rest = rest;
+        Ok(head)
     }
 
     /// Reads exactly the bytes a fixed-size array needs.
