@@ -318,19 +318,33 @@ impl Game {
     /// Panics when no puzzle of the requested difficulty is found within the attempt budget.
     /// Every difficulty this crate defines is reachable well inside it, and the panic exists
     /// so that a future change to the bands cannot quietly return a wrongly labelled puzzle.
+    /// A front end that lets a player supply a seed uses [`Self::try_generate`] instead: a
+    /// panic that crosses a language boundary takes the whole process down with it.
     #[must_use]
     pub fn generate(difficulty: Difficulty, seed: u64) -> Self {
-        let Some((givens, used_seed)) = dig(difficulty, seed) else {
+        let Some(game) = Self::try_generate(difficulty, seed) else {
             panic!("no {difficulty} puzzle was generated from seed {seed}");
         };
-        Self {
+        game
+    }
+
+    /// Generates a puzzle of the requested difficulty, or reports that the seed cannot.
+    ///
+    /// A seed a player types is not a seed the generator chose, so there is no promise that
+    /// one of the attempts produces a puzzle of the difficulty asked for. This is the same
+    /// walk as [`Self::generate`] with that outcome returned rather than raised, which is
+    /// what a caller across a language boundary needs.
+    #[must_use]
+    pub fn try_generate(difficulty: Difficulty, seed: u64) -> Option<Self> {
+        let (givens, used_seed) = dig(difficulty, seed)?;
+        Some(Self {
             givens,
             digits: givens,
             notes: [0; CELLS],
             moves: Vec::new(),
             difficulty,
             seed: used_seed,
-        }
+        })
     }
 
     /// Returns the difficulty the puzzle was generated for.
@@ -662,8 +676,17 @@ struct Grid {
 
 /// Generates a puzzle of a difficulty, returning its givens and the seed that produced them.
 fn dig(difficulty: Difficulty, seed: u64) -> Option<([u8; CELLS], u64)> {
+    dig_within(difficulty, seed, ATTEMPTS)
+}
+
+/// Generates a puzzle of a difficulty within an attempt budget.
+///
+/// The budget is a parameter rather than a constant so that the failure it produces can be
+/// tested without hunting for a seed that happens to fail inside the real one: a test that
+/// depends on such a seed passes only until the generator changes.
+fn dig_within(difficulty: Difficulty, seed: u64, attempts: u64) -> Option<([u8; CELLS], u64)> {
     let band = difficulty.given_range();
-    for attempt in 0..ATTEMPTS {
+    for attempt in 0..attempts {
         let attempt_seed = seed.wrapping_add(attempt.wrapping_mul(0x9e37_79b9_7f4a_7c15));
         let mut random = Random::new(attempt_seed);
         let solution = generate_solution(&mut random);
@@ -1300,6 +1323,34 @@ mod tests {
         }
         assert_eq!(restored.digits, game.givens);
         assert_eq!(restored.notes, [0; CELLS]);
+    }
+
+    #[test]
+    fn a_generated_puzzle_is_returned_as_an_option_too() {
+        for difficulty in Difficulty::ALL {
+            for seed in SEEDS {
+                let generated = Game::try_generate(difficulty, seed);
+                assert!(generated.is_some(), "{difficulty} seed {seed}");
+                assert_eq!(generated, Some(Game::generate(difficulty, seed)));
+            }
+        }
+    }
+
+    #[test]
+    fn a_budget_too_small_to_find_a_puzzle_reports_failure() {
+        // No attempt at all is the budget that fails on every seed, which is what the failure
+        // branch of the walk is: it has to hand back nothing rather than a wrongly labelled
+        // puzzle, and it has to do it without panicking.
+        for difficulty in Difficulty::ALL {
+            for seed in SEEDS {
+                assert_eq!(
+                    dig_within(difficulty, seed, 0),
+                    None,
+                    "{difficulty} seed {seed}"
+                );
+            }
+        }
+        assert!(dig_within(Difficulty::Easy, 0, ATTEMPTS).is_some());
     }
 
     #[test]
