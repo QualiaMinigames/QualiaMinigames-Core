@@ -1909,6 +1909,32 @@ mod tests {
     }
 
     #[test]
+    fn a_no_guess_board_that_is_accepted_really_reaches_its_last_cell() {
+        // `solved_by_logic` is the promise the no-guess mode makes, so it is worth checking
+        // that the walk it describes actually finishes: a solver that counted the safe cells
+        // without opening them would report the same answer and leave the player stuck.
+        let mines = [false, false, false, false];
+        let mut solver = Solver {
+            width: 2,
+            height: 2,
+            mines: &mines,
+            revealed: vec![false; 4],
+            flagged: vec![false; 4],
+            safe_left: 4,
+            pending: Vec::new(),
+            queued: vec![false; 4],
+        };
+        solver.open(0);
+        while solver.safe_left > 0 {
+            if !solver.drain_counting() && !solver.apply_subsets() {
+                break;
+            }
+        }
+        assert_eq!(solver.safe_left, 0, "the walk left a safe cell closed");
+        assert!(solver.revealed.iter().all(|open| *open));
+    }
+
+    #[test]
     fn the_generation_times_are_reported() {
         // The numbers are printed rather than asserted: they are what the release plan asks to
         // measure, and a threshold asserted here would fail on a slower machine for no defect
