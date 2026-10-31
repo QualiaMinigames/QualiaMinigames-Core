@@ -1,0 +1,89 @@
+name: Bug Report - Bug反馈
+description: Create a report to help us improve. - 反馈问题，帮助我们改进
+title: "[Bug] "
+labels:
+  - 🐛 Bug
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filling in this `issue`, please make sure that there are no similar or duplicate `issues` that have been opened.
+        填写此 `issue` 前，请先确认已经开启的 `issue` 没有类似或重复的 `issue`。
+
+  - type: input
+    id: version
+    attributes:
+      label: Version Details - 版本信息
+      description: |
+        What version of `qualia-minigames-core` do you use? If the problem came through the Android application or the FFI crate, please report it there instead: a bug in the rules belongs to the rules, and a bug in the packaging belongs to the package.
+        你使用的 `qualia-minigames-core` 版本是什么？如果问题是通过 Android 应用或 FFI crate 暴露的，请到对应的仓库反馈：规则的问题属于规则，打包的问题属于打包。
+      placeholder: qualia-minigames-core version
+    validations:
+      required: true
+
+  - type: dropdown
+    id: system
+    attributes:
+      label: OS Version - 操作系统
+      options:
+        - Linux
+        - Windows
+        - MacOS
+        - Other / 其他
+    validations:
+      required: true
+
+  - type: input
+    id: rust_version
+    attributes:
+      label: Rust Version - Rust 版本
+      description: |
+        What is the output of `rustc --version`? The crate's minimum supported Rust version is 1.89.
+        `rustc --version` 的输出是什么？本 crate 的最低支持 Rust 版本为 1.89。
+      placeholder: e.g. rustc 1.89.0 (29483883e 2025-08-04)
+    validations:
+      required: true
+
+  - type: textarea
+    id: exist
+    attributes:
+      label: Existing behavior - 现有行为
+      description: |
+        Please describe the problem you have encountered carefully. If a board is wrong, the seed and the parameters reproduce it exactly, so please include them. A minimal program that prints the wrong value is worth more than a description of one.
+        请仔细描述你所遇到的问题。如果盘面不对，种子与参数能精确复现它，请一并给出。一段打印出错误数值的最小程序，比描述它更有用。
+    validations:
+      required: true
+
+  - type: textarea
+    id: expect
+    attributes:
+      label: Expected behavior - 预期行为
+      description: |
+        Please describe in detail the results you wish to achieve.
+        请仔细描述你要得到的结果。
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: To Reproduce - 复现问题
+      description: |
+        How do you trigger this bug? Please walk us through it step by step.
+        这个 bug 是怎么触发的？请一步一步详细告诉我们是怎样出现这个情况的。
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: know
+    attributes:
+      label: Checks - 检查项
+      options:
+        - label: I have searched the [issue tracker](https://github.com/QualiaMinigames/QualiaMinigames-Core/issues) and confirmed that there is no identical issue. 我已经搜索[问题追踪器](https://github.com/QualiaMinigames/QualiaMinigames-Core/issues)并且确认没有相同的 Issue。
+          required: true
+        - label: I admit that I previously checked all options without thorough verification and directly submitted this Issue, and I agree that it can be closed directly. 我承认此前未充分核实便勾选了所有选项并直接提交此 Issue ，且同意该 Issue 可被直接关闭。
+        - label: I confirm that I am currently using the latest release of `qualia-minigames-core`. If not, this issue can be closed directly. 我确认当前使用的是 `qualia-minigames-core` 的最新版本，若非如此，此 Issue 可被直接关闭。
+          required: true
+        - label: I promise to provide a detailed description of the encountered issue, along with the failing case, rather than offering incomplete or vague information. 我承诺将详细描述遇到的问题，并提供失败的用例，而非提供不完整或模糊的信息。
+          required: true
