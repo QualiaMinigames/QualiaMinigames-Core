@@ -33,11 +33,13 @@
 //!
 //! # Status
 //!
-//! Three games are implemented: [`pipes`], where a grid of pipe pieces is turned until it is
+//! Five games are implemented: [`pipes`], where a grid of pipe pieces is turned until it is
 //! one network without a loop, [`sudoku`], where a grid is filled so that every row, column
-//! and box holds each digit once, and [`minesweeper`], where a rectangular board is cleared
-//! of mines without opening one. Every game generates its puzzle from a seed the caller
-//! supplies, and every game can save a game to bytes and read it back through [`snapshot`].
+//! and box holds each digit once, [`minesweeper`], where a rectangular board is cleared of
+//! mines without opening one, [`nonogram`], where a grid is filled so that every row and
+//! column matches its clue, and [`hashi`], where islands are joined by bridges until each
+//! carries its clue. Every game generates its puzzle from a seed the caller supplies, and
+//! every game can save a game to bytes and read it back through [`snapshot`].
 //!
 //! # Usage
 //!
@@ -67,6 +69,24 @@
 //! assert_eq!(game.phase(), qualia_minigames_core::minesweeper::Phase::Playing);
 //! ```
 //!
+//! ```
+//! use qualia_minigames_core::nonogram::Game as Nonogram;
+//!
+//! let mut game = Nonogram::random(10, 10, 7).expect("the board is valid");
+//! assert!(game.toggle_filled(0));
+//! assert_eq!(game.cell(0), qualia_minigames_core::nonogram::FILLED);
+//! assert!(game.toggle_marked(0));
+//! assert_eq!(game.cell(0), qualia_minigames_core::nonogram::MARKED);
+//! ```
+//!
+//! ```
+//! use qualia_minigames_core::hashi::Game as Hashi;
+//!
+//! let mut game = Hashi::random(10, 10, 15, 7).expect("the board is valid");
+//! assert_eq!(game.island_count(), 15);
+//! assert!(game.islands().iter().all(|island| island.clue() >= 1));
+//! ```
+//!
 //! # License
 //!
 //! Licensed under the GNU Lesser General Public License v3.0 or later
@@ -76,7 +96,9 @@
 #![warn(missing_docs)]
 #![warn(clippy::missing_docs_in_private_items)]
 
+pub mod hashi;
 pub mod minesweeper;
+pub mod nonogram;
 pub mod pipes;
 pub mod random;
 pub mod snapshot;
