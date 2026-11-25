@@ -33,15 +33,27 @@
 //!
 //! # Status
 //!
-//! Five games are implemented: [`pipes`], where a grid of pipe pieces is turned until it is
-//! one network without a loop, [`sudoku`], where a grid is filled so that every row, column
-//! and box holds each digit once, [`minesweeper`], where a rectangular board is cleared of
-//! mines without opening one, [`nonogram`], where a grid is filled so that every row and
-//! column matches its clue, and [`hashi`], where islands are joined by bridges until each
-//! carries its clue. Every game generates its puzzle from a seed the caller supplies, and
-//! every game can save a game to bytes and read it back through [`snapshot`].
+//! Six games are implemented: [`arrow_cube`], where blocks with arrows are pulled out of a
+//! solid box, [`pipes`], where a grid of pipe pieces is turned until it is one network
+//! without a loop, [`sudoku`], where a grid is filled so that every row, column and box
+//! holds each digit once, [`minesweeper`], where a rectangular board is cleared of mines
+//! without opening one, [`nonogram`], where a grid is filled so that every row and column
+//! matches its clue, and [`hashi`], where islands are joined by bridges until each carries
+//! its clue. Every game generates its puzzle from a seed the caller supplies, and every
+//! game can save a game to bytes and read it back through [`snapshot`].
 //!
 //! # Usage
+//!
+//! ```
+//! use qualia_minigames_core::arrow_cube::Game as ArrowCube;
+//!
+//! let mut game = ArrowCube::random(5, 5, 5, 7).expect("the board is valid");
+//! let block = (0..game.block_count())
+//!     .find(|index| game.blocker(*index).is_none())
+//!     .expect("a generated board offers a block");
+//! assert!(game.take(block).removed());
+//! assert_eq!(game.mistakes(), 0);
+//! ```
 //!
 //! ```
 //! use qualia_minigames_core::pipes::{Game as Pipes, Layout};
@@ -96,6 +108,7 @@
 #![warn(missing_docs)]
 #![warn(clippy::missing_docs_in_private_items)]
 
+pub mod arrow_cube;
 pub mod hashi;
 pub mod minesweeper;
 pub mod nonogram;
